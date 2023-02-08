@@ -186,6 +186,10 @@ env = Environment(
     "-Wno-c99-designator",
     "-Wno-reorder-init-list",
     "-Wno-error=unused-but-set-variable",
+    # ----- TODO add coverage----
+    "-fprofile-instr-generate",
+    "-fcoverage-mapping"
+    # ----- TODO add coverage----
   ] + cflags + ccflags,
 
   CPPPATH=cpppath + [
