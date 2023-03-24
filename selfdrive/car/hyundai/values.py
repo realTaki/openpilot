@@ -335,10 +335,15 @@ FINGERPRINTS = {
 
 HYUNDAI_VERSION_REQUEST_LONG = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER]) + \
   p16(0xf100)  # Long description
+
+HYUNDAI_VERSION_REQUEST_ALT = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER]) + \
+  p16(0xf110)  # Alt long description
+
 HYUNDAI_VERSION_REQUEST_MULTI = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER]) + \
   p16(uds.DATA_IDENTIFIER_TYPE.VEHICLE_MANUFACTURER_SPARE_PART_NUMBER) + \
   p16(uds.DATA_IDENTIFIER_TYPE.APPLICATION_SOFTWARE_IDENTIFICATION) + \
   p16(0xf100)
+
 HYUNDAI_VERSION_RESPONSE = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER + 0x40])
 
 FW_QUERY_CONFIG = FwQueryConfig(
@@ -355,22 +360,46 @@ FW_QUERY_CONFIG = FwQueryConfig(
       [HYUNDAI_VERSION_RESPONSE],
       whitelist_ecus=[Ecu.engine, Ecu.transmission, Ecu.eps, Ecu.abs, Ecu.fwdRadar],
     ),
-    # CAN-FD queries (camera)
+
+    # CAN-FD queries (from camera)
+    # TODO: combine shared whitelists with CAN requests
     Request(
       [HYUNDAI_VERSION_REQUEST_LONG],
       [HYUNDAI_VERSION_RESPONSE],
-      whitelist_ecus=[Ecu.fwdCamera, Ecu.fwdRadar, Ecu.cornerRadar],
-      bus=4,
+      whitelist_ecus=[Ecu.fwdCamera, Ecu.fwdRadar, Ecu.cornerRadar, Ecu.hvac],
+      bus=0,
+      auxiliary=True,
     ),
     Request(
       [HYUNDAI_VERSION_REQUEST_LONG],
       [HYUNDAI_VERSION_RESPONSE],
-      whitelist_ecus=[Ecu.fwdCamera, Ecu.adas, Ecu.cornerRadar],
-      bus=5,
+      whitelist_ecus=[Ecu.fwdCamera, Ecu.adas, Ecu.cornerRadar, Ecu.hvac],
+      bus=1,
+      auxiliary=True,
+      obd_multiplexing=False,
+    ),
+
+    # CAN-FD debugging queries
+    Request(
+      [HYUNDAI_VERSION_REQUEST_ALT],
+      [HYUNDAI_VERSION_RESPONSE],
+      whitelist_ecus=[Ecu.parking],
+      bus=0,
+      auxiliary=True,
+    ),
+    Request(
+      [HYUNDAI_VERSION_REQUEST_ALT],
+      [HYUNDAI_VERSION_RESPONSE],
+      whitelist_ecus=[Ecu.parking],
+      bus=1,
+      auxiliary=True,
+      obd_multiplexing=False,
     ),
   ],
   extra_ecus=[
     (Ecu.adas, 0x730, None),         # ADAS Driving ECU on HDA2 platforms
+    (Ecu.parking, 0x7b1, None),      # ADAS Parking ECU (may exist on all platforms)
+    (Ecu.hvac, 0x7b3, None),         # HVAC Control Assembly
     (Ecu.cornerRadar, 0x7b7, None),
   ],
 )
@@ -1553,6 +1582,7 @@ FW_VERSIONS = {
       b'\xf1\x00CV1 MFC  AT EUR RHD 1.00 1.00 99210-CV100 220630',
       b'\xf1\x00CV1 MFC  AT USA LHD 1.00 1.00 99210-CV100 220630',
       b'\xf1\x00CV1 MFC  AT KOR LHD 1.00 1.04 99210-CV000 210823',
+      b'\xf1\x00CV1 MFC  AT KOR LHD 1.00 1.06 99210-CV000 220328',
     ],
   },
   CAR.IONIQ_5: {
