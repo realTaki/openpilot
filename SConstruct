@@ -189,8 +189,8 @@ env = Environment(
     "-Wno-reorder-init-list",
     "-Wno-error=unused-but-set-variable",
     # ----- TODO add coverage----
-    "-fprofile-instr-generate",
-    "-fcoverage-mapping"
+    # "-fprofile-instr-generate",
+    # "-fcoverage-mapping"
     # ----- TODO add coverage----
   ] + cflags + ccflags,
 
