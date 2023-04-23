@@ -34,7 +34,11 @@ MessagesWidget::MessagesWidget(QWidget *parent) : QWidget(parent) {
   view->setItemsExpandable(false);
   view->setIndentation(0);
   view->setRootIsDecorated(false);
-  view->header()->setSectionsMovable(false);
+  // Must be called before setting any header parameters to avoid overriding
+  restoreHeaderState(settings.message_header_state);
+
+  view->header()->setSectionsMovable(true);
+
   main_layout->addWidget(view);
 
   // suppress
@@ -62,6 +66,7 @@ MessagesWidget::MessagesWidget(QWidget *parent) : QWidget(parent) {
     if (current_msg_id) {
       selectMessage(*current_msg_id);
     }
+    view->updateBytesSectionSize();
   });
   QObject::connect(view->selectionModel(), &QItemSelectionModel::currentChanged, [=](const QModelIndex &current, const QModelIndex &previous) {
     if (current.isValid() && current.row() < model->msgs.size()) {
@@ -132,12 +137,20 @@ QVariant MessageListModel::data(const QModelIndex &index, int role) const {
   const auto &id = msgs[index.row()];
   auto &can_data = can->lastMessage(id);
 
+  auto getFreq = [](const CanData &d) -> QString {
+    if (d.freq > 0 && (can->currentSec() - d.ts - 1.0 / settings.fps) < (5.0 / d.freq)) {
+      return d.freq >= 1 ? QString::number(std::nearbyint(d.freq)) : QString::number(d.freq, 'f', 2);
+    } else {
+      return "--";
+    }
+  };
+
   if (role == Qt::DisplayRole) {
     switch (index.column()) {
       case 0: return msgName(id);
       case 1: return id.source;
-      case 2: return QString::number(id.address, 16);;
-      case 3: return can_data.freq;
+      case 2: return QString::number(id.address, 16);
+      case 3: return getFreq(can_data);
       case 4: return can_data.count;
       case 5: return toHex(can_data.dat);
     }
@@ -280,7 +293,7 @@ void MessageView::drawRow(QPainter *painter, const QStyleOptionViewItem &option,
   auto y = option.rect.y();
   painter->translate(visualRect(model()->index(0, 0)).x() - indentation() - .5, -.5);
   for (int i = 0; i < header()->count(); ++i) {
-    painter->translate(header()->sectionSize(i), 0);
+    painter->translate(header()->sectionSize(header()->logicalIndex(i)), 0);
     painter->drawLine(0, y, 0, y + option.rect.height());
   }
   painter->setPen(old_pen);
@@ -288,7 +301,21 @@ void MessageView::drawRow(QPainter *painter, const QStyleOptionViewItem &option,
 }
 
 void MessageView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight, const QVector<int> &roles) {
-   // Bypass the slow call to QTreeView::dataChanged.
-   // QTreeView::dataChanged will invalidate the height cache and that's what we don't need in MessageView.
-   QAbstractItemView::dataChanged(topLeft, bottomRight, roles);
+  // Bypass the slow call to QTreeView::dataChanged.
+  // QTreeView::dataChanged will invalidate the height cache and that's what we don't need in MessageView.
+  QAbstractItemView::dataChanged(topLeft, bottomRight, roles);
+}
+
+void MessageView::updateBytesSectionSize() {
+  auto delegate = ((MessageBytesDelegate *)itemDelegate());
+  int max_bytes = 8;
+  if (!delegate->multipleLines()) {
+    for (auto it = can->last_msgs.constBegin(); it != can->last_msgs.constEnd(); ++it) {
+      max_bytes = std::max(max_bytes, it.value().dat.size());
+    }
+  }
+  int width = delegate->widthForBytes(max_bytes);
+  if (header()->sectionSize(5) != width) {
+    header()->resizeSection(5, width);
+  }
 }
