@@ -12,6 +12,7 @@ fi
 if ! command -v "pyenv" > /dev/null 2>&1; then
   echo "pyenv install ..."
   curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+  # bash ./tools/pyenv-installer
 
   echo -e "\n. ~/.pyenvrc" >> $RC_FILE
   cat <<EOF > "${HOME}/.pyenvrc"
